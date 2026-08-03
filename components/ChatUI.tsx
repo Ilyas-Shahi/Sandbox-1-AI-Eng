@@ -1,7 +1,14 @@
 'use client';
 
-import { ai } from '@/lib/gemini';
-import { useEffect, useRef, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
+import { useCallback, useEffect, useRef, useState } from 'react';
+
+type ChatHistory = {
+  chatId: string | null;
+  title: string;
+  history: MessageMT[];
+};
 
 type Message = {
   role: 'user_input' | 'model_output' | 'model' | 'user';
@@ -21,10 +28,40 @@ const MODELS = [
 ];
 
 export default function ChatUI() {
-  const [messagesHistory, setMessagesHistory] = useState<MessageMT[]>([]);
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const chatId = searchParams.get('chatId');
 
+  const genNewChatId = useCallback(() => {
+    router.replace(`?chatId=${crypto.randomUUID()}`);
+  }, [router]);
+  useEffect(() => {
+    if (!chatId) genNewChatId();
+  }, [chatId, genNewChatId]);
+
+  const [allChatsHistory, setAllChatsHistory] = useState<ChatHistory[]>([]);
+
+  const [messagesHistory, setMessagesHistory] = useState<MessageMT[]>([]);
   const [input, setInput] = useState('');
   const [model, setModel] = useState(MODELS[0]);
+
+  useEffect(() => {
+    if (!chatId) return;
+
+    const allChatsHistoryLS: ChatHistory[] = JSON.parse(
+      localStorage.getItem('all-chats-history') ?? '[]',
+    );
+
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setAllChatsHistory(allChatsHistoryLS);
+
+    const currHistory =
+      allChatsHistoryLS.find((e) => e.chatId === chatId)?.history ?? [];
+
+    setMessagesHistory(currHistory);
+  }, [chatId]);
+
+  const inputRef = useRef<HTMLTextAreaElement>(null);
   const fileInput = useRef<HTMLInputElement>(null);
 
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -32,6 +69,7 @@ export default function ChatUI() {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messagesHistory]);
 
+  //  TODO: =========== Call your backend here.
   const sendMessage = async () => {
     if (!input.trim()) return;
 
@@ -43,36 +81,65 @@ export default function ChatUI() {
     setMessagesHistory((prev) => [...prev, newTurn]);
 
     setInput('');
+    inputRef.current?.setAttribute('enabled', 'false');
 
-    // TODO: Call your backend here.
+    try {
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          params: {
+            model,
+            store: false,
+            input: [...messagesHistory, newTurn],
+          },
+        }),
+      });
 
-    const response = await fetch('/api/chat', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        params: {
-          model,
-          store: false,
-          input: [...messagesHistory, newTurn],
-        },
-      }),
-    });
+      const data = await response.json();
 
-    const data = await response.json();
-    const interaction = data.interaction;
+      if (data.success) {
+        const interaction = data.interaction;
 
-    console.log('cui interaction: ', interaction);
+        setMessagesHistory((prev) => [...prev, ...interaction.steps]);
 
-    setMessagesHistory((prev) => [...prev, ...interaction.steps]);
-    // setMessagesHistory((prev) => [
-    //   ...prev,
-    //   {
-    //     type: 'model_output',
-    //     content: [{ type: 'text', text: interaction.output_text }],
-    //   },
-    // ]);
+        const newHistory = [...messagesHistory, newTurn, ...interaction.steps];
+        const setHistoryData: ChatHistory[] = allChatsHistory.find(
+          (chat) => chat.chatId == chatId,
+        )
+          ? allChatsHistory.map((chat) =>
+              chat.chatId == chatId
+                ? {
+                    ...chat,
+                    history: newHistory,
+                  }
+                : chat,
+            )
+          : [
+              ...allChatsHistory,
+              {
+                chatId,
+                title: newTurn.content[0].text.trim(),
+                history: newHistory,
+              },
+            ];
+
+        localStorage.setItem(
+          'all-chats-history',
+          JSON.stringify(setHistoryData),
+        );
+        setAllChatsHistory(setHistoryData);
+      } else {
+        throw new Error(data.interaction);
+      }
+    } catch (error) {
+      console.error(error);
+    } finally {
+      inputRef.current?.setAttribute('enabled', 'true');
+    }
   };
 
+  console.log('all history: ', allChatsHistory);
   console.log('history: ', messagesHistory);
 
   return (
@@ -84,6 +151,7 @@ export default function ChatUI() {
             onClick={() => {
               setMessagesHistory([]);
               setInput('');
+              genNewChatId();
             }}
             className="w-full rounded-md bg-zinc-800 py-2 hover:bg-zinc-700"
           >
@@ -93,17 +161,13 @@ export default function ChatUI() {
 
         {/* Chat history  */}
         <div className="flex-1 overflow-y-auto p-2 space-y-2">
-          {[
-            'Building an AI Agent',
-            'OpenAI Streaming',
-            'Next.js Route Handlers',
-            'Travel Plans',
-          ].map((chat) => (
+          {allChatsHistory.map((chat) => (
             <button
-              key={chat}
-              className="w-full rounded-md px-3 py-2 text-left text-sm hover:bg-zinc-800"
+              key={chat.chatId}
+              className="w-full cursor-pointer rounded-md px-3 py-2 text-left text-sm hover:bg-zinc-800"
+              onClick={() => router.replace(`?chatId=${chat.chatId}`)}
             >
-              {chat}
+              {chat.title}
             </button>
           ))}
         </div>
