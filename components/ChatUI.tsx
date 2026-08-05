@@ -3,6 +3,8 @@
 import { useSearchParams } from 'next/navigation';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import Markdown from 'react-markdown';
+import remark_GFM from 'remark-gfm';
 
 type ChatHistory = {
   chatId: string | null;
@@ -78,69 +80,165 @@ export default function ChatUI() {
       content: [{ type: 'text', text: input }],
     };
 
-    setMessagesHistory((prev) => [...prev, newTurn]);
+    setMessagesHistory((prev) => [
+      ...prev,
+      newTurn,
+      { type: 'model_output', content: [{ type: 'text', text: '' }] },
+    ]);
 
     setInput('');
     inputRef.current?.setAttribute('enabled', 'false');
 
     try {
-      const response = await fetch('/api/chat', {
+      const response = await fetch('/api/chat-stream', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           params: {
             model,
-            store: false,
             input: [...messagesHistory, newTurn],
           },
         }),
       });
 
-      const data = await response.json();
+      if (response.status === 200) {
+        const reader = response.body?.getReader();
+        const decoder = new TextDecoder();
 
-      if (data.success) {
-        const interaction = data.interaction;
+        let replyMessage = '';
 
-        setMessagesHistory((prev) => [...prev, ...interaction.steps]);
+        while (true) {
+          const readerData = await reader?.read();
 
-        const newHistory = [...messagesHistory, newTurn, ...interaction.steps];
-        const setHistoryData: ChatHistory[] = allChatsHistory.find(
-          (chat) => chat.chatId == chatId,
-        )
-          ? allChatsHistory.map((chat) =>
-              chat.chatId == chatId
-                ? {
-                    ...chat,
-                    history: newHistory,
-                  }
-                : chat,
-            )
-          : [
-              ...allChatsHistory,
+          if (readerData?.done) {
+            const newHistory: MessageMT[] = [
+              ...messagesHistory,
+              newTurn,
               {
-                chatId,
-                title: newTurn.content[0].text.trim(),
-                history: newHistory,
+                type: 'model_output',
+                content: [{ type: 'text', text: replyMessage }],
               },
             ];
 
-        localStorage.setItem(
-          'all-chats-history',
-          JSON.stringify(setHistoryData),
-        );
-        setAllChatsHistory(setHistoryData);
+            const setHistoryData: ChatHistory[] = allChatsHistory.find(
+              (chat) => chat.chatId == chatId,
+            )
+              ? allChatsHistory.map((chat) =>
+                  chat.chatId == chatId
+                    ? {
+                        ...chat,
+                        history: newHistory,
+                      }
+                    : chat,
+                )
+              : [
+                  ...allChatsHistory,
+                  {
+                    chatId,
+                    title: newTurn.content[0].text.trim(),
+                    history: newHistory,
+                  },
+                ];
+
+            localStorage.setItem(
+              'all-chats-history',
+              JSON.stringify(setHistoryData),
+            );
+            setAllChatsHistory(setHistoryData);
+            break;
+          }
+
+          const txtChunk = decoder.decode(readerData?.value);
+          replyMessage = replyMessage + txtChunk;
+
+          setMessagesHistory((prev) =>
+            prev.map((item, index) =>
+              index === prev.length - 1
+                ? {
+                    ...item,
+                    content: [
+                      {
+                        ...item.content[0],
+                        text: item.content[0].text + txtChunk,
+                      },
+                    ],
+                  }
+                : item,
+            ),
+          );
+        }
       } else {
-        throw new Error(data.interaction);
+        const responseData = await response.json();
+        setMessagesHistory((prev) => [
+          ...prev,
+          {
+            type: 'model_output',
+            content: [
+              {
+                type: 'text',
+                text: responseData.error.name + responseData.error.status,
+              },
+            ],
+          },
+        ]);
+        console.error(responseData);
       }
+
+      // NON streaming logic
+      // const response = await fetch('/api/chat', {
+      //   method: 'POST',
+      //   headers: { 'Content-Type': 'application/json' },
+      //   body: JSON.stringify({
+      //     params: {
+      //       model,
+      //       store: false,
+      //       input: [...messagesHistory, newTurn],
+      //     },
+      //   }),
+      // });
+
+      // const data = await response.json();
+
+      // if (data.success) {
+      //   const interaction = data.interaction;
+
+      //   setMessagesHistory((prev) => [...prev, ...interaction.steps]);
+
+      //   const newHistory = [...messagesHistory, newTurn, ...interaction.steps];
+      //   const setHistoryData: ChatHistory[] = allChatsHistory.find(
+      //     (chat) => chat.chatId == chatId,
+      //   )
+      //     ? allChatsHistory.map((chat) =>
+      //         chat.chatId == chatId
+      //           ? {
+      //               ...chat,
+      //               history: newHistory,
+      //             }
+      //           : chat,
+      //       )
+      //     : [
+      //         ...allChatsHistory,
+      //         {
+      //           chatId,
+      //           title: newTurn.content[0].text.trim(),
+      //           history: newHistory,
+      //         },
+      //       ];
+
+      //   localStorage.setItem(
+      //     'all-chats-history',
+      //     JSON.stringify(setHistoryData),
+      //   );
+      //   setAllChatsHistory(setHistoryData);
+      // } else {
+      //   throw new Error(data.interaction);
+      // }
     } catch (error) {
       console.error(error);
     } finally {
       inputRef.current?.setAttribute('enabled', 'true');
     }
   };
-
-  console.log('all history: ', allChatsHistory);
-  console.log('history: ', messagesHistory);
 
   return (
     <div className="flex h-screen bg-zinc-950 text-zinc-100">
@@ -192,7 +290,7 @@ export default function ChatUI() {
 
         {/* Messages */}
         <main className="flex-1 overflow-y-auto px-6 py-8">
-          <div className="mx-auto max-w-4xl space-y-5">
+          <div className="mx-auto max-w-4xl space-y-5 wrap-break-word">
             {messagesHistory.map(
               (message: MessageMT, index) =>
                 (message.type === 'model_output' ||
@@ -212,7 +310,9 @@ export default function ChatUI() {
                           : 'bg-zinc-800 text-zinc-100'
                       }`}
                     >
-                      {message.content[0].text}
+                      <Markdown remarkPlugins={[remark_GFM]}>
+                        {message.content[0].text}
+                      </Markdown>
                     </div>
                   </div>
                 ),
