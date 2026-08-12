@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -29,7 +30,7 @@ const MODELS = [
   'gemma-4-31b-it',
 ];
 
-export default function ChatUI() {
+export default function ChatUIGemTxt() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const chatId = searchParams.get('chatId');
@@ -87,7 +88,7 @@ export default function ChatUI() {
     ]);
 
     setInput('');
-    inputRef.current?.setAttribute('enabled', 'false');
+    inputRef.current?.setAttribute('disabled', 'true');
 
     try {
       const response = await fetch('/api/chat-stream', {
@@ -236,7 +237,7 @@ export default function ChatUI() {
     } catch (error) {
       console.error(error);
     } finally {
-      inputRef.current?.setAttribute('enabled', 'true');
+      inputRef.current?.removeAttribute('disabled');
     }
   };
 
@@ -244,14 +245,20 @@ export default function ChatUI() {
     <div className="flex h-screen bg-zinc-950 text-zinc-100">
       {/* Sidebar */}
       <aside className="w-72 border-r border-zinc-800 bg-zinc-900 flex flex-col">
-        <div className="p-4 border-b border-zinc-800">
+        <div className="p-4 border-b flex gap-3 items-center border-zinc-800">
+          <Link
+            className="cursor-pointer rounded-md bg-zinc-800 px-4 py-1 hover:bg-zinc-700"
+            href={'/'}
+          >
+            Home
+          </Link>
           <button
             onClick={() => {
               setMessagesHistory([]);
               setInput('');
               genNewChatId();
             }}
-            className="w-full rounded-md bg-zinc-800 py-2 hover:bg-zinc-700"
+            className="w-full cursor-pointer rounded-md bg-zinc-800 py-2 hover:bg-zinc-700"
           >
             + New Chat
           </button>
@@ -262,7 +269,7 @@ export default function ChatUI() {
           {allChatsHistory.map((chat) => (
             <button
               key={chat.chatId}
-              className="w-full cursor-pointer rounded-md px-3 py-2 text-left text-sm hover:bg-zinc-800"
+              className="w-full cursor-pointer truncate rounded-md px-3 py-2 text-left text-sm hover:bg-zinc-800"
               onClick={() => router.replace(`?chatId=${chat.chatId}`)}
             >
               {chat.title}
@@ -326,6 +333,7 @@ export default function ChatUI() {
         <footer className="border-t border-zinc-800 bg-zinc-900 p-4">
           <div className="mx-auto max-w-4xl rounded-xl border border-zinc-700 bg-zinc-800 p-3">
             <textarea
+              ref={inputRef}
               rows={3}
               value={input}
               onChange={(e) => setInput(e.target.value)}
