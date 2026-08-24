@@ -13,6 +13,10 @@ export default function Home() {
         <Link href={'/recipe-extractor'} className=" text-lg cursor-pointer">
           2 - Recipe extractor structured output (gemini)
         </Link>
+
+        <Link href={'/tools-calling'} className=" text-lg cursor-pointer">
+          3 - Tools calling (gemini)
+        </Link>
       </div>
     </div>
   );
