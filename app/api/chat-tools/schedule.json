@@ -1,0 +1,80 @@
+[
+  {
+    "id": "1",
+    "title": "Team meeting",
+    "date": "01-09-2026",
+    "time": "15:00"
+  },
+  {
+    "id": "357c8353-0d31-441f-9554-217a983c0217",
+    "title": "Meeting with Mark",
+    "date": "20-12-2026",
+    "time": "10am"
+  },
+  {
+    "id": "b551d082-5e14-40b1-a25a-d275f1105c3b",
+    "title": "Meeting with Joana",
+    "date": "12-11-2026",
+    "time": "15:00"
+  },
+  {
+    "id": "36993add-1140-474f-a210-ddaaea81d7a3",
+    "title": "Meeting with Marko",
+    "date": "12-11-2026",
+    "time": "10:00"
+  },
+  {
+    "id": "26d349cf-4a7e-4d19-8f27-b4bb17120c89",
+    "title": "Meeting with Johana",
+    "date": "01-01-2027",
+    "time": "10:00"
+  },
+  {
+    "id": "f70a9a76-2ca0-474b-8b18-c7197684e389",
+    "title": "Meeting with Johnatan",
+    "date": "01-02-2027",
+    "time": "10:00"
+  },
+  {
+    "id": "f91fef89-af06-4968-8f94-63fbbd297028",
+    "title": "Meeting with Johnatan",
+    "date": "01-02-2027",
+    "time": "10:00"
+  },
+  {
+    "id": "e89a3130-404d-4e48-be4a-b0c15e423b1e",
+    "title": "Meeting with Sameer",
+    "date": "01-02-2027",
+    "time": "14:00"
+  },
+  {
+    "id": "2fcbb0f2-edb4-4e59-b013-1d92ab1b35d6",
+    "title": "Meeting with Sameer",
+    "date": "01-02-2027",
+    "time": "14:00"
+  },
+  {
+    "id": "676437e6-d07e-4e77-96d2-15517caa2734",
+    "title": "Meeting with Kamaloo",
+    "date": "01-02-2027",
+    "time": "14:00"
+  },
+  {
+    "id": "9a6b7cbf-a1bf-4a4e-aebd-bd2c50315f0f",
+    "title": "Meeting with Kamaloo",
+    "date": "01-02-2027",
+    "time": "14:00"
+  },
+  {
+    "id": "16e54f8a-1e1c-4968-81d8-219eb282e1c2",
+    "title": "meeting with jonatan",
+    "date": "12-09-2026",
+    "time": "not specified"
+  },
+  {
+    "id": "e8dbda3a-db37-4870-b6cb-b5ea710af076",
+    "title": "Meeting with Matt",
+    "date": "20-09-26",
+    "time": "13:00"
+  }
+]
