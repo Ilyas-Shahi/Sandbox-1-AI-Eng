@@ -13,14 +13,13 @@ type ChatHistory = {
   history: MessageMT[];
 };
 
-type Message = {
-  role: 'user_input' | 'model_output' | 'model' | 'user';
-  content: [{ type: string; text: string }];
-};
+type ContentBlock =
+  | { type: 'text'; text: string }
+  | { type: 'image'; mime_type: string; data: string };
 
 type MessageMT = {
   type: 'user_input' | 'model_output' | 'model' | 'user';
-  content: [{ type: string; text: string }];
+  content: ContentBlock[];
 };
 
 const MODELS = [
@@ -47,6 +46,10 @@ export default function ChatUIGemTxt() {
   const [messagesHistory, setMessagesHistory] = useState<MessageMT[]>([]);
   const [input, setInput] = useState('');
   const [model, setModel] = useState(MODELS[0]);
+  const [uploadImg, setUploadImg] = useState<{
+    mimeType: string;
+    data: string;
+  } | null>(null);
 
   useEffect(() => {
     if (!chatId) return;
@@ -72,13 +75,35 @@ export default function ChatUIGemTxt() {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messagesHistory]);
 
-  //  TODO: =========== Call your backend here.
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e?.target?.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const uploadedFileBase64 = (reader.result as string).split(',')[1];
+      setUploadImg({ mimeType: file.type, data: uploadedFileBase64 });
+    };
+    reader.readAsDataURL(file);
+  };
+
   const sendMessage = async () => {
     if (!input.trim()) return;
 
     const newTurn: MessageMT = {
       type: 'user_input',
-      content: [{ type: 'text', text: input }],
+      content: [
+        { type: 'text', text: input },
+        ...(uploadImg
+          ? [
+              {
+                type: 'image' as const,
+                mime_type: uploadImg.mimeType,
+                data: uploadImg.data,
+              },
+            ]
+          : []),
+      ],
     };
 
     setMessagesHistory((prev) => [
@@ -88,6 +113,7 @@ export default function ChatUIGemTxt() {
     ]);
 
     setInput('');
+    setUploadImg(null);
     inputRef.current?.setAttribute('disabled', 'true');
 
     try {
@@ -136,7 +162,10 @@ export default function ChatUIGemTxt() {
                   ...allChatsHistory,
                   {
                     chatId,
-                    title: newTurn.content[0].text.trim(),
+                    title:
+                      newTurn.content[0].type === 'text'
+                        ? newTurn.content[0].text.trim()
+                        : '',
                     history: newHistory,
                   },
                 ];
@@ -160,7 +189,10 @@ export default function ChatUIGemTxt() {
                     content: [
                       {
                         ...item.content[0],
-                        text: item.content[0].text + txtChunk,
+                        text:
+                          item.content[0].type === 'text'
+                            ? item.content[0].text + txtChunk
+                            : '',
                       },
                     ],
                   }
@@ -318,7 +350,9 @@ export default function ChatUIGemTxt() {
                       }`}
                     >
                       <Markdown remarkPlugins={[remark_GFM]}>
-                        {message.content[0].text}
+                        {message.content[0].type === 'text'
+                          ? message.content[0].text
+                          : ''}
                       </Markdown>
                     </div>
                   </div>
@@ -356,7 +390,13 @@ export default function ChatUIGemTxt() {
                   📎
                 </button>
 
-                <input ref={fileInput} type="file" hidden />
+                <input
+                  ref={fileInput}
+                  type="file"
+                  hidden
+                  accept="image/*"
+                  onChange={handleFileChange}
+                />
               </div>
 
               <button
