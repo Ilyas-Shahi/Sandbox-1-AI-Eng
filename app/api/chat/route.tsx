@@ -1,20 +1,45 @@
-import { ai } from '@/lib/gemini';
+import {
+  streamText,
+  UIMessage,
+  convertToModelMessages,
+  createUIMessageStreamResponse,
+  toUIMessageStream,
+  tool,
+  isStepCount,
+} from 'ai';
+import { z } from 'zod';
+import { toolDefs } from '@/lib/toolDefsGem';
 
-export async function POST(request: Request) {
-  const data = await request.json();
-  const params = data.params;
-
-  console.log(params);
-
+export async function POST(req: Request) {
   try {
-    if (!params) throw new Error('No Request params');
+    const { messages }: { messages: UIMessage[] } = await req.json();
 
-    const interaction = await ai.interactions.create(params);
-    console.log('interaction steps', interaction.steps);
+    const result = streamText({
+      model: 'alibaba/qwen3.7-flash',
+      messages: await convertToModelMessages(messages),
+      stopWhen: isStepCount(5),
+      tools: {
+        weather: tool({
+          description: 'Get the weather in a location (celsius)',
+          inputSchema: z.object({
+            location: z
+              .string()
+              .describe('The location to get the weather for'),
+            latitude: z.string().describe('The latitude of the city/location'),
+            longitude: z
+              .string()
+              .describe('The longitude of the city/location'),
+          }),
+          execute: toolDefs.get_weather,
+        }),
+      },
+    });
 
-    return Response.json({ success: true, interaction });
+    return createUIMessageStreamResponse({
+      stream: toUIMessageStream({ stream: result.stream }),
+    });
   } catch (error) {
-    console.log('error ');
-    return Response.json({ success: false, interaction: error });
+    console.error(error);
+    return Response.json({ success: false, error });
   }
 }

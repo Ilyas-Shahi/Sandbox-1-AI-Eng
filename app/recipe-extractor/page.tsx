@@ -128,7 +128,7 @@ export default function RecipeExtractorPage() {
 
     try {
       // NON streaming logic
-      const response = await fetch('/api/chat', {
+      const response = await fetch('/api/chat-gemini', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

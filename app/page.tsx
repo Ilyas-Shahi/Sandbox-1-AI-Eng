@@ -17,6 +17,10 @@ export default function Home() {
         <Link href={'/tools-calling'} className=" text-lg cursor-pointer">
           3 - Tools calling (gemini)
         </Link>
+
+        <Link href={'/ai-sdk-test'} className=" text-lg cursor-pointer">
+          4 - AI SDK test (Vercel)
+        </Link>
       </div>
     </div>
   );
