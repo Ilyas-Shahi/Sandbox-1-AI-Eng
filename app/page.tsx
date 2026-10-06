@@ -21,6 +21,10 @@ export default function Home() {
         <Link href={'/ai-sdk-test'} className=" text-lg cursor-pointer">
           4 - AI SDK test (Vercel)
         </Link>
+
+        <Link href={'/fastapi-gem'} className=" text-lg cursor-pointer">
+          5 - Gemini basic with FastAPI backend (Python)
+        </Link>
       </div>
     </div>
   );
